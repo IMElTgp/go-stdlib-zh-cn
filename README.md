@@ -1,4 +1,4 @@
-# Go标准库net、sync、net/http、context中文翻译
+# Go标准库net、sync、net/http、context官方文档中文翻译
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
