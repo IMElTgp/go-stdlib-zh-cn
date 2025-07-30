@@ -108,4 +108,4 @@ type Context interface {
 func Background() Context
 ```
 
-`Background`返回一个非零值的空[`Context`](#type-context)接口。该接口不会被取消、没有关联值也没有截止时间。`Background`通常由`main`函数、初始化和测试使用，与顶层`Context`处理到来的请求一样。
+`Background`返回一个非nil的空[`Context`](#type-context)接口。该接口不会被取消、不携带值也没有截止时间。`Background`通常作为传入请求的顶级`Context`，或由`main`函数、初始化逻辑和测试场景使用。
