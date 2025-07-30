@@ -1,3 +1,13 @@
+# 函数
+
+## func Cause
+
+```go
+func Cause(c Context) error
+```
+
+`Cause`返回一个非nil的解释`c`被取消原因的错误。`Cause`由`c`或其任一父级`Context`的首次取消操作设置。如果这次取消是通过对`CancelCauseFunc(err)`的调用触发的，`Cause`将返回`err`。否则，`Cause(c)`将返回`c.Err()`的相同值。如果`c`尚未被取消，`Cause(c)`返回nil。
+
 # 类型
 
 ## type Context
@@ -108,4 +118,20 @@ type Context interface {
 func Background() Context
 ```
 
-`Background`返回一个非nil的空[`Context`](#type-context)接口。该接口不会被取消、不携带值也没有截止时间。`Background`通常作为传入请求的顶级`Context`，或由`main`函数、初始化逻辑和测试场景使用。
+`Background`返回一个非nil的空[`Context`](#type-context)接口。该接口不会被取消、不携带值也没有截止时间。`Background`通常由`main`函数、初始化逻辑和测试场景使用，或作为传入请求的顶级`Context`。
+
+## func TODO
+
+```go
+func TODO() Context
+```
+
+`TODO`返回一个非nil的空`Context`。当不清楚应当使用哪个`Context`，或`Context`尚不可用（因为外围函数尚未扩展以接收`Context`参数）时，代码应使用`Context.TODO`。
+
+## func WithoutCancel
+
+```go
+func WithoutCancel(parent Context) Context
+```
+
+`WithoutCancel`返回一个关联父`Context`的派生`Context`，该派生`Context`不会随父`Context`取消而取消。返回的`Context`不返回截止时间或取消错误，且其`Done`信道为nil。在返回的`Context`上调用[`Cause`](#func-cause)将返回nil（译者注：取消原因始终为nil）。
