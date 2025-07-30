@@ -20,7 +20,7 @@ type Mutex struct {
 func (m *Mutex) Lock()
 ```
 
-`Lock`函数锁定`m`。如果该互斥锁已被锁定，调用的Goroutine将会阻塞直至解锁。
+`Lock`函数锁定`m`。如果该互斥锁已被锁定，调用的goroutine将会阻塞直至解锁。
 
 ## func (m *Mutex) TryLock
 
@@ -40,4 +40,4 @@ func (m *Mutex) Unlock()
 
 `Unlock`将`m`解锁。尝试对未加锁的互斥锁解锁将会导致运行时错误。
 
-加锁的互斥锁与某个特定的Goroutine并无关联。可以由一个Goroutine锁定互斥锁，并由另一个Goroutine解锁。
+加锁的互斥锁与某个特定的goroutine并无关联。可以由一个goroutine锁定互斥锁，并由另一个goroutine解锁。

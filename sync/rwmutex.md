@@ -23,7 +23,7 @@ type RWMutex struct {
 
 `RWMutex`首次使用后禁止复制。
 
-如果有Goroutine对已由一个或多个读取者持有的互斥锁调用了`RWMutex.Lock`方法，后续对`RWMutex.RLock`方法的并发调用会阻塞直至写入者获取（并释放）了该锁，以确保写入者最终能获取锁（译者注：防止写入者饿死）。注意，此设计禁止了递归读锁（read-locking）（译者注：已持有读锁的Goroutine再次尝试获取读锁将导致死锁）。`RWMutex.RLock`不能升级为`RWMutex.Lock`，`RWMutex.Lock`也不能降级为`RWMutex.RLock`。
+如果有goroutine对已由一个或多个读取者持有的互斥锁调用了`RWMutex.Lock`方法，后续对`RWMutex.RLock`方法的并发调用会阻塞直至写入者获取（并释放）了该锁，以确保写入者最终能获取锁（译者注：防止写入者饿死）。注意，此设计禁止了递归读锁（read-locking）（译者注：已持有读锁的goroutine再次尝试获取读锁将导致死锁）。`RWMutex.RLock`不能升级为`RWMutex.Lock`，`RWMutex.Lock`也不能降级为`RWMutex.RLock`。
 
 在Go内存模型术语中，对`RWMutex.Unlock`方法的第`n`次调用*同步发生于*任何满足`m > n`的第`m`次`RWMutex.Lock`方法调用之前（和`Mutex`一样）。对于任何`RWMutex.RLock`调用，总存在`n`使得第`n`次`RWMutex.Unlock`调用*同步发生于*本次`RWMutex.RLock`调用之前，且对应的`RWMutex.RUnlock`调用*同步发生于*第`n+1`次`RWMutex.Lock`调用之前。
 
@@ -89,4 +89,4 @@ func (rw *RWMutex) Unlock()
 
 `Unlock`将`rw`解除写锁。尝试对未加写锁的`rw`解除写锁将会导致运行时错误。
 
-与互斥锁一致，加锁的[读写锁](#type-rwmutex)与某个特定的Goroutine并无关联。可以由一个Goroutine通过[`RWMutex.RLock`](#func-rwmutex-rlock)（[`RWMutex.Lock`](#func-rwmutex-lock)）锁定读写锁，并由另一个Goroutine通过[`RWMutex.RUnlock`](#func-rwmutex-runlock)（[`RWMutex.Unlock`](#func-rwmutex-unlock)）解锁。
+与互斥锁一致，加锁的[读写锁](#type-rwmutex)与某个特定的goroutine并无关联。可以由一个goroutine通过[`RWMutex.RLock`](#func-rwmutex-rlock)（[`RWMutex.Lock`](#func-rwmutex-lock)）锁定读写锁，并由另一个goroutine通过[`RWMutex.RUnlock`](#func-rwmutex-runlock)（[`RWMutex.Unlock`](#func-rwmutex-unlock)）解锁。

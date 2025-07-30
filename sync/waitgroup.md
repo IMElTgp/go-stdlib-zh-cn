@@ -8,7 +8,7 @@ type WaitGroup struct {
 }
 ```
 
-一个`WaitGroup`等待一组Goroutine完成执行。主Goroutine调用`WaitGroup.Add`以设置需要等待的Goroutine的数量。之后，每个Goroutine运行，并在完成时调用`WaitGroup.Done`方法。同时，可以使用`WaitGroup.Wait`方法来阻塞直至所有Goroutine完成。
+一个`WaitGroup`等待一组goroutine完成执行。主goroutine调用`WaitGroup.Add`以设置需要等待的goroutine的数量。之后，每个goroutine运行，并在完成时调用`WaitGroup.Done`方法。同时，可以使用`WaitGroup.Wait`方法来阻塞直至所有goroutine完成。
 
 `WaitGroup`首次使用后禁止复制。
 
@@ -60,9 +60,9 @@ func main() {
 func (wg *WaitGroup) Add(delta int)
 ```
 
-`Add`方法向`WaitGroup`计数器增加`delta`的增量（可能是负数）。一旦计数器归零，所有阻塞于`WaitGroup.Wait`方法的Goroutine都被释放。如果计数器变为负数，`Add`方法将会发生panic。
+`Add`方法向`WaitGroup`计数器增加`delta`的增量（可能是负数）。一旦计数器归零，所有阻塞于`WaitGroup.Wait`方法的goroutine都被释放。如果计数器变为负数，`Add`方法将会发生panic。
 
-注意，当计数器为0时，调用增量为正的`Add`方法必须在`Wait`方法之前。当计数器为正时，可以在任何时候调用增量为正或负的`Add`方法。一般来说，这意味着对`Add`方法的调用应该在创建Goroutine的语句或其他需要等待的事件之前执行。如果一个`WaitGroup`被重用以等待若干组相互独立的事件，新的`Add`方法调用必须发生在所有之前的`Wait`方法调用返回之后。详见[示例](#示例)。
+注意，当计数器为0时，调用增量为正的`Add`方法必须在`Wait`方法之前。当计数器为正时，可以在任何时候调用增量为正或负的`Add`方法。一般来说，这意味着对`Add`方法的调用应该在创建goroutine的语句或其他需要等待的事件之前执行。如果一个`WaitGroup`被重用以等待若干组相互独立的事件，新的`Add`方法调用必须发生在所有之前的`Wait`方法调用返回之后。详见[示例](#示例)。
 
 ## func (wg *WaitGroup) Done
 
