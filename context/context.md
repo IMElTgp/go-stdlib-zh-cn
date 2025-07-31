@@ -1,4 +1,209 @@
+# 变量
+
+```go
+var Canceled = errors.New("context canceled")
+```
+
+`Canceled`是`Context`不因超出截止时间被取消时由[`Context.Err`]返回的错误。
+
+```go
+var DeadlineExceeded error = deadlineExceededError{}
+```
+
+`DeadlineExceeded`是`Context`因超出截止时间被取消时由[`Context.Err`]返回的错误。
+
 # 函数
+
+## func AfterFunc（go1.21.0引入）
+
+```go
+func AfterFunc(ctx Context, f func()) (stop func() bool)
+```
+
+`AfterFunc`在`ctx`被取消后于其拥有的goroutine上调用`f`。如果`ctx`已经被取消，则立即在其goroutine上调用`f`。
+
+对于同一个`Context`的多个`AfterFunc`调用独立运行，彼此互不影响。
+
+调用返回的`stop`函数将解除`ctx`和`f`之间的关联。当成功阻止`f`的执行时该函数返回`true`。若`ctx`已被取消且`f`已在其goroutine上启动运行，或`f`已停止执行，`stop`返回`false`。`stop`函数在返回前不会等待`f`完成执行。如果调用者需确认`f`是否完成运行，需要显式（自行）与`f`协调。
+
+如果`ctx`实现了`AfterFunc(func()) func() bool`方法，`AfterFunc`将使用其调度调用。
+
+### 示例（Cond）
+
+以下示例使用`AfterFunc`定义一个在`sync.Cond`上等待的函数，该函数在`Context`被取消时停止等待：
+
+```go
+package main
+
+import (
+    "context"
+    "fmt"
+    "sync"
+    "time"
+)
+
+func main() {
+    waitOnCond := func(ctx context.Context, cond *sync.Cond, conditionMet func() bool) error {
+        stopf := context.AfterFunc(ctx, func() {
+            // We need to acquire cond.L here to be sure that the Broadcast
+            // below won't occur before the call to Wait, which would result
+            // in a missed signal (and deadlock).
+            cond.L.Lock()
+            defer cond.L.Unlock()
+
+            // If multiple goroutines are waiting on cond simutaneously,
+            // we need to make sure we wake up exactly this one.
+            // That means we need to Broadcast to all of the goroutines,
+            // which will wake them all up.
+            //
+            // If there are N concurrent calls to waitOnCond, each of the goroutines
+            // will spuriously wake up O(N) other goroutines that aren't ready yet,
+            // so this will cause the overall CPU cost to be O(N²).
+            cond.Broadcast()
+        })
+        defer stopf()
+
+        // Since the wakeups are using Broadcast instead of Signal, this call to
+        // Wait may unblock due to some other goroutine's context being canceled,
+        // so to be sure that ctx is actually canceled we need to check it in a loop.
+        for !conditionMet() {
+            cond.Wait()
+            if ctx.Err() != nil {
+                return ctx.Err()
+            }
+        }
+
+        return nil
+    }
+
+    cond := sync.NewCond(new(sync.Mutex))
+
+    var wg sync.WaitGroup
+    for i := 0; i < 4; i++ {
+        wg.Add(1)
+        go func() {
+            defer wg.Done()
+
+            ctx, cancel := context.WithTimeout(context.Background(), 1*time.Millisecond)
+            defer cancel()
+
+            cond.L.Lock()
+            defer cond.L.Unlock()
+
+            err := waitOnCond(ctx, cond, func() bool { return false })
+            fmt.Println(err)
+        }()
+    }
+    wg.Wait()
+
+}
+```
+
+```text
+Output:
+
+context deadline exceeded
+context deadline exceeded
+context deadline exceeded
+context deadline exceeded
+```
+
+### 示例（Connection）
+
+以下示例使用`AfterFunc`定义了一个从`net.Conn`读取的函数，该函数在`Context`被取消时停止读取：
+
+```go
+package main() 
+
+import (
+    "context"
+    "fmt"
+    "net"
+    "time"
+)
+
+func main() {
+    readFromConn := func(ctx context.Context, conn net.Conn, b []byte) (n int, err error) {
+        stopc := make(chan struct{})
+        stop := context.AfterFunc(ctx, func() {
+            conn.SetReadDeadline(time.Now())
+            close(stopc)
+        })
+        n, err = conn.Read(b)
+        if !stop() {
+            // The AfterFunc was started.
+            // Wait for it to complete, and reset the Conn's deadline.
+            <-stopc
+            conn.SetReadDeadline(time.Time{})
+            return n, ctx.Err()
+        }
+        return n, err
+    }
+
+    listener, err := net.Listen("tcp", "localhost:0")
+    if err != nil {
+        fmt.Println(err)
+        return 
+    }
+    defer conn.Close()
+
+    ctx, cancel := context.WithTimeout(context.Background(), 1*time.Millisecond)
+    defer cancel()
+
+    b := make([]byte, 1024)
+    _, err = readFromConn(ctx, conn, b)
+    fmt.Println(err)
+
+}
+```
+
+```text
+Output:
+
+context deadline exceeded
+```
+
+### 示例（Merge）
+
+以下示例使用`AfterFunc`定义了一个组合两个`Context`的取消信号的函数：
+
+```go
+package main
+
+import (
+    "context"
+    "errors"
+    "fmt"
+)
+
+func main() {
+    // mergeCancel returns a context that contains the values of ctx,
+    // and which is canceled when either ctx or cancelCtx is canceled.
+    mergeCancel := func(ctx, cancelCtx context.Context) (context.Context, context.CancelFunc) {
+        ctx, cancel := context.WithCancelCause(ctx)
+        stop := context.AfterFunc(cancelCtx, func() {
+            cancel(context.Cause(cancelCtx))
+        })
+        return ctx, func() {
+            stop()
+            cancel(context.Canceled)
+        }
+    }
+
+    ctx1, cancel1 := context.WithCancelCause(context.Background())
+    defer cancel1(errors.New("ctx1 canceled"))
+
+    ctx2, cancel2 := context.WithCancelCause(context.Background())
+
+    mergedCtx, mergedCancel := mergeCancel(ctx1, ctx2)
+    defer mergeCancel()
+
+    cancel2(errors.New("ctx2 canceled"))
+    <-mergedCtx.Done()
+    fmt.Println(context.Cause(mergedCtx))
+    
+}
+```
 
 ## func Cause（go1.20引入）
 
