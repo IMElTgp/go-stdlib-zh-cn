@@ -1,6 +1,6 @@
 # 函数
 
-## func Cause
+## func Cause（go1.20引入）
 
 ```go
 func Cause(c Context) error
